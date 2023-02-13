@@ -31,6 +31,24 @@ class PBSection:
     instructor      : str
     classes         : List[PBClass]
 
+    def on(self, days: List[PBClassDays]) -> bool:
+        '''
+        Checks if a section have a class on the given days.
+        '''
+        for clazz in self.classes:
+            if clazz.day in days:
+                return True
+        return False
+
+    def before(self, time: datetime) -> bool:
+        '''
+        Checks if a section have a class before a given hour.
+        '''
+        for clazz in self.classes:
+            if time > clazz.start:
+                return True
+        return False
+
 @dataclass
 class PBSubject:
     name    : str

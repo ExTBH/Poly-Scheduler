@@ -1,14 +1,16 @@
 from getpass import getpass
 from typing import List
 from PBCourse import PBCourse
-from PBSubject import PBSubject
+from PBSubject import PBSubject, PBSection, PBClassDays
+import itertools
+from datetime import *
 
 userID       = input("SSB Username: ")
 userPassword = getpass("SSB Password: ")
 
 from PBScraper import PBScraper
 
-scraper = PBScraper(userID, userPassword)
+scraper = PBScraper(userID, userPassword, True)
 scraper_login = scraper.login()
 if scraper_login[0] == False:
     print(scraper_login[1])
@@ -44,5 +46,24 @@ for course in selected_courses:
 
 scraper.get_sections(subjects_to_load)
 
-for subject in subjects_to_load:
-    print(subject, '\n\n')
+breakDays = [PBClassDays(x) for x in input("Enter Break days [U, M, T, W, R] (space-separated): ").split()]
+start_hour = datetime.strptime(input('What time you want the classes to start at [H:MM (A/P)M]: '), '%I:%M %p')
+
+filtered_subjects = subjects_to_load
+print(f'{len(filtered_subjects[0].sections)} : {len(filtered_subjects[1].sections)}')
+for idx, subject in enumerate(subjects_to_load):
+    for section in subject.sections:
+        if section.on(breakDays) or section.before(start_hour):
+            filtered_subjects[idx].sections.remove(section)
+
+print(f'{len(filtered_subjects[0].sections)} : {len(filtered_subjects[1].sections)}')
+
+sections_pool = []
+for subject in filtered_subjects:
+    sections_pool.append(subject.sections)
+
+for pool in itertools.product(*sections_pool):
+    print('Schedule 2:', end=' ')
+    for idx in range(0, len(filtered_subjects)):
+        print (f'[{pool[idx].section}] {pool[idx].name}', end=' ')
+    print('\n')

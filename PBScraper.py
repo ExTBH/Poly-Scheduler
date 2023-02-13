@@ -11,7 +11,7 @@ class PBScraper:
     def __init__(self, userID: str, userPassword: str, debug = False) -> None:
         self.userID       = userID
         self.userPassword = userPassword
-        self.session      = httpx.Client(follow_redirects=True, verify=False)
+        self.session      = httpx.Client(follow_redirects=True, verify=False, headers= {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'})
         self.baseURL      = 'https://selfservice.polytechnic.bh/PROD'
         self.debug        = debug
 
@@ -184,6 +184,7 @@ class PBScraper:
         Any subject you don't need should be removed from the array.
         '''
         for subject in subjects:
+            if self.debug: print(f'Loading sections for {subject.name}')
             sections_payload = {
                 "term_in": subject.term.term_code,
                 "sel_subj": [
@@ -229,15 +230,24 @@ class PBScraper:
             subject_page_soap  = BeautifulSoup(subject_page.text, 'html.parser')
             subject_page_table = subject_page_soap.find('table', {'class': 'datadisplaytable'})
             table_trs          = subject_page_table.find_all('tr')[2:]
-
+            idxs = 0
             for table_tr in table_trs:
+                # with open(f'{subject.name}.{subject.course}{idxs}.html', 'w') as f:
+                #     f.write(str(table_tr))
+                #     idxs = idxs + 1
                 # check the current row if it's a subrow or no
                 if self._section_subrow_is_main(table_tr):
                     continue
                 #get subrows of rows
                 did_reach_primary_row = False
                 sub_trs = []
+                while_counter = 0
                 while did_reach_primary_row == False:
+                    if while_counter > 100:
+                            print('Loop Counter maxed, breaking loop')
+                            break
+                    while_counter = while_counter+1
+
                     if len(sub_trs) == 0:
                         first_sibling = table_tr.find_next_sibling('tr')
                         if first_sibling == None or self._section_subrow_is_main(first_sibling) == False:
