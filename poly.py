@@ -50,18 +50,15 @@ breakDays = [PBClassDays(x) for x in input("Enter Break days [U, M, T, W, R] (sp
 start_hour = datetime.strptime(input('What time you want the classes to start at [H:MM (A/P)M]: '), '%I:%M %p')
 
 filtered_subjects = subjects_to_load
-print(f'{len(filtered_subjects[0].sections)} : {len(filtered_subjects[1].sections)}')
 for idx, subject in enumerate(subjects_to_load):
     for section in subject.sections:
         if section.on(breakDays) or section.before(start_hour):
             filtered_subjects[idx].sections.remove(section)
 
-print(f'{len(filtered_subjects[0].sections)} : {len(filtered_subjects[1].sections)}')
 
 sections_pool = []
 for subject in filtered_subjects:
     sections_pool.append(subject.sections)
-
 for pool in itertools.product(*sections_pool):
     print('Schedule 2:', end=' ')
     for idx in range(0, len(filtered_subjects)):

@@ -172,12 +172,24 @@ class PBScraper:
                             course.subjects.append(subject)
 
     @staticmethod
-    def _section_subrow_is_main(row) -> bool:
+    def _is_main_row(row) -> bool:
         first_3_td = row.find_all('td', limit=3)
         for td in first_3_td:
             if td.text.strip() == '':
-                return True
-        return False
+                return False
+        return True
+
+    @staticmethod
+    def _unwrap_main_row(row) -> Tuple:
+        tds = [td.text for td in row.find_all('td')]
+        #       crn, code, section, name, day1, raw_time, avail_seats, registered_seats, remaining_seats, instructor, location
+        return (tds[1], tds[3], tds[4], tds[7], PBClassDays(tds[8]), tds[9], tds[10], tds[11], tds[12], tds[13], tds[15])
+
+    @staticmethod
+    def _unwrap_sub_row(row) -> Tuple:
+        tds = [td.text for td in row.find_all('td')]
+        #       day(n), raw_time, instructor, location
+        return (PBClassDays(tds[8]), tds[9], tds[13], tds[15])
 
     def get_sections(self, subjects: List[PBSubject]) -> None:
         '''
@@ -227,88 +239,34 @@ class PBScraper:
             }
 
             subject_page       = self.session.post(self.baseURL + '/bwskfcls.P_GetCrse', data=sections_payload)
+            if self.debug: print(f'Page loaded for {subject.name}')
             subject_page_soap  = BeautifulSoup(subject_page.text, 'html.parser')
             subject_page_table = subject_page_soap.find('table', {'class': 'datadisplaytable'})
             table_trs          = subject_page_table.find_all('tr')[2:]
-            idxs = 0
-            for table_tr in table_trs:
-                # with open(f'{subject.name}.{subject.course}{idxs}.html', 'w') as f:
-                #     f.write(str(table_tr))
-                #     idxs = idxs + 1
-                # check the current row if it's a subrow or no
-                if self._section_subrow_is_main(table_tr):
+
+            for idx, table_tr in enumerate(table_trs):
+                if self._is_main_row(table_tr):
+                    (crn, code, section, name, day1, raw_time,
+                        avail_seats, registered_seats, remaining_seats,
+                        instructor, location) = self._unwrap_main_row(table_tr)
+                    
+
+                    start_end = [datetime.strptime(x, '%I:%M %p') for x in raw_time.split('-')]
+                    section_to_add = PBSection(
+                        crn, code, section, name,
+                        avail_seats, registered_seats,
+                        remaining_seats, instructor, [PBClass(day1, *start_end, location)])
+                    # find subrows after the current row
+                    for sub_table_tr in table_trs[idx+1:]:
+                        if self._is_main_row(sub_table_tr): break
+                        (day1, raw_time, instructor, location) = self._unwrap_sub_row(sub_table_tr)
+                        start_end = [datetime.strptime(x, '%I:%M %p') for x in raw_time.split('-')]
+                        section_to_add.classes.append(PBClass(day1, *start_end, location))
+                    
+                    subject.sections.append(section_to_add)
+
+                else:
                     continue
-                #get subrows of rows
-                did_reach_primary_row = False
-                sub_trs = []
-                while_counter = 0
-                while did_reach_primary_row == False:
-                    if while_counter > 100:
-                            print('Loop Counter maxed, breaking loop')
-                            break
-                    while_counter = while_counter+1
-
-                    if len(sub_trs) == 0:
-                        first_sibling = table_tr.find_next_sibling('tr')
-                        if first_sibling == None or self._section_subrow_is_main(first_sibling) == False:
-                            did_reach_primary_row = True
-                            continue
-                        sub_trs.append(first_sibling)
-                        continue
-
-                    next_sibling = sub_trs[-1].find_next_sibling('tr')
-                    if next_sibling == None or self._section_subrow_is_main(next_sibling) == False:
-                        did_reach_primary_row = True
-                        continue
-                    sub_trs.append(first_sibling)
-                main_row_data = [x.text for x in table_tr.find_all('td')]
-                for idx in [16, 14, 6, 5, 0]:
-                    main_row_data.pop(idx)
-
-                subrows_data = []
-                for row in sub_trs:
-                    cntnt = [x.text for x in row.find_all('td')]
-                    for idx in [16, 14, 12, 11, 10, 7, 6, 5, 4, 3, 2, 1, 0]:
-                        cntnt.pop(idx)
-                    subrows_data.append(cntnt)
-
-                subject.sections.append(PBSection(
-                    main_row_data[0],
-                    main_row_data[2],
-                    main_row_data[3],
-                    main_row_data[4],
-                    main_row_data[7],
-                    main_row_data[8],
-                    main_row_data[9],
-                    main_row_data[10],
-                    []
-                ))
-
-                start_end = [datetime.strptime(x, '%I:%M %p') for x in main_row_data[6].split('-')]
-                subject.sections[-1].classes.append(
-                    PBClass(
-                        PBClassDays(main_row_data[5]),
-                        start_end[0],
-                        start_end[1],
-                        main_row_data[11]
-                    ))
-                for row_data in subrows_data:
-                    start_end = [datetime.strptime(x, '%I:%M %p') for x in row_data[1].split('-')]
-                    subject.sections[-1].classes.append(
-                        PBClass(
-                            PBClassDays(row_data[0]),
-                            start_end[0],
-                            start_end[1],
-                            row_data[3]
-                        ))
-
-
-
-
-
-
-
-
-
-
+            
+            if self.debug: print(f'Loaded sections for {subject.name}')
 
