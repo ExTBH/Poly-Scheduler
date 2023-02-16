@@ -3,6 +3,7 @@ from typing import List
 from PBCourse import PBCourse
 from PBSubject import PBSubject, PBSection, PBClassDays
 import itertools
+import numpy as np
 from datetime import *
 
 userID       = input("SSB Username: ")
@@ -51,36 +52,44 @@ start_hour = datetime.strptime(input('What time you want the classes to start at
 
 filtered_subjects = subjects_to_load
 for idx, subject in enumerate(subjects_to_load):
-    for section in subject.sections:
+    to_remove = []
+    for idy, section in enumerate(subject.sections):
         if section.on(breakDays) or section.before(start_hour):
-            filtered_subjects[idx].sections.remove(section)
+            to_remove[:0] = [idy]
+    for idy in to_remove:
+        subjects_to_load[idx].sections.pop(idy)
 
 
-sections_pool = []
-for subject in filtered_subjects:
-    sections_pool.append(subject.sections)
+sections_pool = [subject.sections for subject in filtered_subjects]
 
 final_sections: List[tuple[PBSection]] = []
-# Tuple of PBSection
-for outer_pool in itertools.product(*sections_pool):
-    #loop over tuple
-    for outer_itm in outer_pool:
-        #loop again
-        no_clash = True
-        for inner_itm in outer_pool:
-            # skip to next item in inner loop if same
-            if outer_itm == inner_itm:
-                continue
-            # break inner in class and go to next
-            if outer_itm._clashes(inner_itm):
-                no_clash = False
+for sections_tuple in itertools.product(*sections_pool):
+    # 144 10 minutes in a day by 5 days
+    week_vectors = [np.zeros(144*5, dtype=bool) for _ in range(0, len(sections_tuple))]
+
+    for idx in range(0, len(sections_tuple)):
+        clss_ranges = sections_tuple[idx].ranges_in_week()
+        for rng in clss_ranges:
+            np.put(week_vectors[idx], rng, np.ones(len(rng), dtype=bool))
+    
+    mtrx = np.array(week_vectors)
+    
+    for x in mtrx:
+        skipper = False
+        for nested_x in mtrx:
+            if np.array_equal(nested_x, x) : continue
+            did_clash = np.sum(nested_x * x, dtype=bool)
+            if did_clash:
+                skipper = True
                 break
-        if no_clash: final_sections.append(outer_pool)
 
-print(len(final_sections))
+        if skipper == False:
+            final_sections.append(sections_tuple)
+    
 
-for tup in final_sections:
-    print('Stream:', end=' ')
-    for sec in tup:
-        print (f'[{sec.section}] {sec.name}', end=' ')
+
+for idx, sctn_pool in enumerate(final_sections):
+    print(f'Schedule #{idx} --', end=' ')
+    for sctns in sctn_pool:
+        print(f'[{sctns.section}] {sctns.code} {sctns.name}', end=' --- ')
     print('\n')

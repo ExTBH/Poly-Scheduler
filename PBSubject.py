@@ -3,7 +3,7 @@ from typing import List
 from enum import Enum
 from PBTerm import PBTerm
 from datetime import *
-import itertools
+import numpy as np
 
 class PBClassDays(Enum):
     sunday    = 'U'
@@ -20,6 +20,30 @@ class PBClass:
     end     : datetime
     location: str
 
+    def _range_in_week(self) -> List[int]:
+        muliplier = 0
+        match self.day:
+            case PBClassDays.sunday:
+                muliplier = 1
+            case PBClassDays.monday:
+                muliplier = 2
+            case PBClassDays.tuesday:
+                muliplier = 3
+            case PBClassDays.wednesday:
+                muliplier = 4
+            case PBClassDays.thursday:
+                muliplier = 5
+
+        st_float = (self.start.hour * 60 + self.start.minute) / 10
+        en_float = (self.end.hour * 60 + self.end.minute) / 10
+        #round minutes to next group, i.e 9:01 > 9:10, 9:00 > 9:00
+        st = int(st_float if st_float.is_integer() else np.ceil(st_float))
+        en = int(en_float if en_float.is_integer() else np.ceil(en_float))
+        return (
+            list(
+                range(st * muliplier, (en * muliplier) + 1)
+            )
+        )
 @dataclass
 class PBSection:
     crn             : int
@@ -49,13 +73,13 @@ class PBSection:
             if time > clazz.start:
                 return True
         return False
+    
+    def ranges_in_week(self) -> List[List[int]]:
+        '''
+        Convenice method.
+        '''
+        return [clazz._range_in_week() for clazz in self.classes]
 
-    def _clashes(self, __o: 'PBSection') -> bool:
-        for pool in itertools.product(self.classes, __o.classes):
-            if pool[0].day == pool[1].day:
-                if pool[0].start <= pool[1].end and pool[0].end >= pool[1].start:
-                    True
-        return False
 
 
 
