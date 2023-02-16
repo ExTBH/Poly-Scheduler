@@ -3,6 +3,7 @@ from typing import List
 from enum import Enum
 from PBTerm import PBTerm
 from datetime import *
+import itertools
 
 class PBClassDays(Enum):
     sunday    = 'U'
@@ -48,6 +49,16 @@ class PBSection:
             if time > clazz.start:
                 return True
         return False
+
+    def _clashes(self, __o: 'PBSection') -> bool:
+        for pool in itertools.product(self.classes, __o.classes):
+            if pool[0].day == pool[1].day:
+                if pool[0].start <= pool[1].end and pool[0].end >= pool[1].start:
+                    True
+        return False
+
+
+
 
 @dataclass
 class PBSubject:

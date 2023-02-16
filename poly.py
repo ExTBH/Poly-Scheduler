@@ -59,8 +59,28 @@ for idx, subject in enumerate(subjects_to_load):
 sections_pool = []
 for subject in filtered_subjects:
     sections_pool.append(subject.sections)
-for pool in itertools.product(*sections_pool):
-    print('Schedule 2:', end=' ')
-    for idx in range(0, len(filtered_subjects)):
-        print (f'[{pool[idx].section}] {pool[idx].name}', end=' ')
+
+final_sections: List[tuple[PBSection]] = []
+# Tuple of PBSection
+for outer_pool in itertools.product(*sections_pool):
+    #loop over tuple
+    for outer_itm in outer_pool:
+        #loop again
+        no_clash = True
+        for inner_itm in outer_pool:
+            # skip to next item in inner loop if same
+            if outer_itm == inner_itm:
+                continue
+            # break inner in class and go to next
+            if outer_itm._clashes(inner_itm):
+                no_clash = False
+                break
+        if no_clash: final_sections.append(outer_pool)
+
+print(len(final_sections))
+
+for tup in final_sections:
+    print('Stream:', end=' ')
+    for sec in tup:
+        print (f'[{sec.section}] {sec.name}', end=' ')
     print('\n')
