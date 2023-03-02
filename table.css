@@ -1,0 +1,32 @@
+table {
+    width: 100%;
+    border: 1px solid black;
+    border-radius: 5px;
+}
+
+tr td:first-child, th {
+    background-color: antiquewhite;
+    height: 44px;
+    font-family: monospace;
+    font-weight: bold;
+} 
+
+td {
+    text-align: center;
+}
+
+.cell {
+    border-radius: 3px;
+}
+#IT6003 {
+    background-color: coral;
+}
+#IT6005 {
+    background-color: mediumturquoise;
+}
+#IT6008 {
+    background-color: deeppink;
+}
+#EN5005 {
+    background-color: mediumspringgreen;
+}

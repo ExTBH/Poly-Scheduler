@@ -71,21 +71,17 @@ for sections_tuple in itertools.product(*sections_pool):
         clss_ranges = sections_tuple[idx].ranges_in_week()
         for rng in clss_ranges:
             np.put(week_vectors[idx], rng, np.ones(len(rng), dtype=bool))
-    
-    mtrx = np.array(week_vectors)
-    
-    for x in mtrx:
+        
+    for x in week_vectors:
         skipper = False
-        for nested_x in mtrx:
+        for nested_x in week_vectors:
             if np.array_equal(nested_x, x) : continue
             did_clash = np.sum(nested_x * x, dtype=bool)
             if did_clash:
                 skipper = True
                 break
-
         if skipper == False:
             final_sections.append(sections_tuple)
-    
 
 
 for idx, sctn_pool in enumerate(final_sections):
